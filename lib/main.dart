@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:location/location.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:myapp/background_handler.dart';
 import '/screens/home_screen.dart';
+import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
+    as bg;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> initializeNotifications() async {
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+}
 
 void main() {
   runApp(const MyApp());
@@ -16,9 +31,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  LocationData? _currentLocation;
-  final Location _location = Location();
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -34,27 +46,5 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _getLocation();
-  }
-
-  Future<void> _getLocation() async {
-    bool serviceEnabled;
-    PermissionStatus permissionGranted;
-
-    serviceEnabled = await _location.serviceEnabled();
-
-    permissionGranted = await _location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await _location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) {
-        return;
-      }
-    }
-
-    _location.onLocationChanged.listen((LocationData currentLocation) {
-      setState(() {
-        _currentLocation = currentLocation;
-      });
-    });
   }
 }
