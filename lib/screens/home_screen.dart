@@ -1,9 +1,17 @@
+import 'dart:async'; // Import for StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
-import 'package:myapp/services/location_service.dart';
+import 'package:myapp/services/location_service.dart'; // Assuming this handles permissions
 import 'package:myapp/services/metro_data_service.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:dropdown_search/dropdown_search.dart';
+
+// Assuming you have a Station class like this from your services
+// class Station {
+//   final String name;
+//   final double latitude;
+//   final double longitude;
+//   Station({required this.name, required this.latitude, required this.longitude});
+// }
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -14,40 +22,69 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedStartingStation;
   String? _selectedEndingStation;
   Station? _nearestStation;
-  double? userLat;
-  double? userlong;
+
+  // For managing the location stream
+  final Location location = Location();
+  StreamSubscription<LocationData>? _locationSubscription;
 
   Future<List<Station>>? _stationsFuture;
+  final MetroDataService _metroDataService = MetroDataService();
 
   @override
   void initState() {
     super.initState();
-    _stationsFuture = _loadStations();
-    getNearestStation();
+    // Load station list once
+    _stationsFuture = _metroDataService.loadStations();
+    // Start listening for location changes
+    _listenForLocationChanges();
   }
 
-  Future<List<Station>> _loadStations() async {
-    final MetroDataService metroDataService = MetroDataService();
-    return metroDataService.loadStations();
-  }
-
-  Future<void> getNearestStation() async {
-    final MetroDataService metroDataService = MetroDataService();
-    LocationData? userLocation = await getCurrentLocation();
-    if (userLocation != null) {
-      print(
-        'Latitude: ${userLocation.latitude}, Longitude: ${userLocation.longitude}',
-      );
-      final Map<String, dynamic> result = await metroDataService
-          .getNearestStation(
-            userLocation.latitude ?? 0,
-            userLocation.longitude ?? 0,
-          );
-      setState(() {
-        _nearestStation = result['station'];
-        print('Nearest Station: ${_nearestStation!.name}');
-      });
+  /// Subscribes to the location stream and updates the nearest station on new data.
+  void _listenForLocationChanges() async {
+    // Ensure location services are enabled and permissions are granted
+    // You might have this logic in your location_service.dart
+    final serviceEnabled = await location.serviceEnabled();
+    if (!serviceEnabled) {
+      // Handle service not enabled
+      return;
     }
+
+    final permissionGranted = await location.hasPermission();
+    if (permissionGranted == PermissionStatus.denied) {
+      // Handle permissions denied
+      return;
+    }
+
+    // Listen to location changes
+    _locationSubscription = location.onLocationChanged.listen((
+      LocationData currentLocation,
+    ) async {
+      print(
+        'New Location: Lat: ${currentLocation.latitude}, Long: ${currentLocation.longitude}',
+      );
+
+      // Find the nearest station with the new coordinates
+      final Map<String, dynamic> result = await _metroDataService
+          .getNearestStation(
+            currentLocation.latitude ?? 0,
+            currentLocation.longitude ?? 0,
+          );
+
+      // Update the state only if the widget is still in the tree
+      if (mounted) {
+        setState(() {
+          _nearestStation = result['station'];
+          print('New Nearest Station: ${_nearestStation?.name}');
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // IMPORTANT: Cancel the subscription to avoid memory leaks
+    _locationSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -72,22 +109,30 @@ class _HomeScreenState extends State<HomeScreen> {
               return Center(child: Text('No station data available.'));
             } else {
               final List<Station> stations = snapshot.data!;
+              final List<String> stationNames =
+                  stations.map((s) => s.name).toList();
+
               return Center(
                 child: Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Center the column vertically
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     DropdownSearch<String>(
-                      items: (f, cs) => stations.map((s) => s.name).toList(),
-                      popupProps: PopupProps.menu(fit: FlexFit.loose),
+                      items: (f, cs) => stationNames, // Corrected items list
+                      popupProps: PopupProps.menu(
+                        showSearchBox: true, // Good for long lists
+                        fit: FlexFit.loose,
+                      ),
                       onChanged: (value) {
                         _selectedStartingStation = value;
                       },
                     ),
                     SizedBox(height: 20),
                     DropdownSearch<String>(
-                      items: (f, cs) => stations.map((s) => s.name).toList(),
-                      popupProps: PopupProps.menu(fit: FlexFit.loose),
+                      items: (f, cs) => stationNames, // Corrected items list
+                      popupProps: PopupProps.menu(
+                        showSearchBox: true,
+                        fit: FlexFit.loose,
+                      ),
                       onChanged: (value) {
                         _selectedEndingStation = value;
                       },
@@ -98,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           (_selectedStartingStation != null &&
                                   _selectedEndingStation != null)
                               ? () {
-                                // TODO: Implement journey planning logic
                                 print(
                                   'Starting Station: $_selectedStartingStation',
                                 );
@@ -106,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   'Ending Station: $_selectedEndingStation',
                                 );
                               }
-                              : null, // Disable button if stations are not selected
+                              : null,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20.0,
@@ -115,9 +159,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text('Plan Journey'),
                       ),
                     ),
-                    _nearestStation != null
-                        ? Text("Nearest Station: ${_nearestStation!.name}")
-                        : SizedBox(),
+                    SizedBox(height: 20),
+                    // Display the nearest station, which updates automatically
+                    if (_nearestStation != null)
+                      Text(
+                        "📍 Nearest Station: ${_nearestStation!.name}",
+                        style: TextStyle(fontSize: 16),
+                      )
+                    else
+                      // Show a placeholder while waiting for the first location update
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text("Finding nearest station..."),
+                        ],
+                      ),
                   ],
                 ),
               );
