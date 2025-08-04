@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
 
@@ -88,4 +89,66 @@ class MetroDataService {
   }
 
   double _toRadians(double deg) => deg * pi / 180;
+}
+
+Future<List<String>> findIntermediateStations(
+  String startStation,
+  String endStation,
+) async {
+  final String csvData = await rootBundle.loadString(
+    'assets/DELHI_METRO_DATA.csv',
+  );
+  final List<List<String>> rows =
+      LineSplitter.split(csvData)
+          .skip(1) // Skip header
+          .map((line) => line.split(','))
+          .toList();
+
+  // Step 1: Build adjacency graph (Map<StationName, List<NeighboringStationName>>)
+  final Map<String, List<String>> graph = {};
+  final Map<String, List<String>> lineWiseStations = {};
+
+  for (var row in rows) {
+    final station = row[0].trim();
+    final line = row[1].trim();
+
+    if (!lineWiseStations.containsKey(line)) {
+      lineWiseStations[line] = [];
+    }
+    lineWiseStations[line]!.add(station);
+  }
+
+  // Connect adjacent stations on the same line
+  for (var stations in lineWiseStations.values) {
+    for (int i = 0; i < stations.length - 1; i++) {
+      graph.putIfAbsent(stations[i], () => []).add(stations[i + 1]);
+      graph.putIfAbsent(stations[i + 1], () => []).add(stations[i]);
+    }
+  }
+
+  // Step 2: BFS to find the path
+  final visited = <String>{};
+  final queue = <List<String>>[];
+  queue.add([startStation]);
+
+  while (queue.isNotEmpty) {
+    final path = queue.removeAt(0);
+    final current = path.last;
+
+    if (current == endStation) {
+      return path; // Full path from start to end
+    }
+
+    if (!visited.contains(current)) {
+      visited.add(current);
+      final neighbors = graph[current] ?? [];
+
+      for (var neighbor in neighbors) {
+        final newPath = List<String>.from(path)..add(neighbor);
+        queue.add(newPath);
+      }
+    }
+  }
+
+  return []; // No path found
 }

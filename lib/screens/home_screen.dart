@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   _selectedEndingStation != null &&
                                   _selectedEndingStation !=
                                       _selectedStartingStation)
-                              ? () {
+                              ? () async {
                                 print(
                                   'Starting Station: $_selectedStartingStation',
                                 );
@@ -171,9 +171,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                   'Ending Station: $_selectedEndingStation',
                                 );
 
-                                initBackgroundGeolocation(
+                                await initBackgroundGeolocation(
                                   _selectedEndingStation!.latitude,
                                   _selectedEndingStation!.longitude,
+                                );
+
+                                // Find the intermediate stations
+                                final List<String> intermediateStations =
+                                    await findIntermediateStations(
+                                      _selectedStartingStation!.name,
+                                      _selectedEndingStation!.name,
+                                    );
+                                print(intermediateStations);
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Alarm tracking started. You’ll be alerted within 1 km of ${_selectedEndingStation!.name}.',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 4),
+                                  ),
                                 );
                               }
                               : null,

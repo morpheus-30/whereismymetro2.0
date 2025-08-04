@@ -5,24 +5,41 @@ import 'package:flutter_background_geolocation/flutter_background_geolocation.da
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
+bool _alarmTriggered = false;
+
 Future<void> initBackgroundGeolocation(
   double destinationLat,
   double destinationLng,
 ) async {
+  print("[Geo] Initializing background geolocation...");
+
   await bg.BackgroundGeolocation.ready(
     bg.Config(
       desiredAccuracy: bg.Config.DESIRED_ACCURACY_HIGH,
       distanceFilter: 50,
-      stopOnTerminate: false, // continue after app is closed
-      startOnBoot: true, // restart on phone reboot
+      stopOnTerminate: false, // ✅ survives kill
+      startOnBoot: true, // ✅ resumes on reboot
       debug: true,
       logLevel: bg.Config.LOG_LEVEL_VERBOSE,
     ),
   );
 
+  print("[Geo] BackgroundGeolocation ready!");
+
+  // Log motion state changes
+  bg.BackgroundGeolocation.onMotionChange((bg.Location location) {
+    print(
+      "[Geo] Motion change -> isMoving: ${location.isMoving}, "
+      "Lat: ${location.coords.latitude}, Lng: ${location.coords.longitude}",
+    );
+  });
+
+  // Handle location updates
   bg.BackgroundGeolocation.onLocation((bg.Location location) {
     double lat = location.coords.latitude;
     double lng = location.coords.longitude;
+
+    print("[Geo] Location received: lat=$lat, lng=$lng");
 
     double distance = calculateHaversineDistance(
       lat,
@@ -30,16 +47,18 @@ Future<void> initBackgroundGeolocation(
       destinationLat,
       destinationLng,
     );
-    print('Distance to destination: $distance km');
+    print("[Geo] Distance to destination: ${distance.toStringAsFixed(3)} km");
 
-    if (distance <= 1.0) {
-      // 🚨 Trigger Alarm / Notification
+    if (!_alarmTriggered && distance <= 1.0) {
+      _alarmTriggered = true;
+      print("[Geo] Within 1 km radius. Triggering alarm...");
       triggerAlarm();
-      bg.BackgroundGeolocation.stop(); // optional, if one-time alarm
+      bg.BackgroundGeolocation.stop(); // optional if tracking is one-time
     }
   });
 
   await bg.BackgroundGeolocation.start();
+  print("[Geo] Background tracking started.");
 }
 
 double calculateHaversineDistance(
