@@ -7,7 +7,7 @@ xmlns:tools="http://schemas.android.com/tools">
 
     <application
     tools:replace="android:label"
-        android:label="myapp"
+        android:label="WhereIsMyMetro"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <service android:name="com.transistorsoft.locationmanager.BackgroundGeolocationService"

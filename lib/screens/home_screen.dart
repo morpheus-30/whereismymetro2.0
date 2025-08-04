@@ -1,9 +1,8 @@
 import 'dart:async'; // Import for StreamSubscription
+import 'package:WhereIsMyMetro/background_handler.dart';
+import 'package:WhereIsMyMetro/services/metro_data_service.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
-import 'package:myapp/background_handler.dart';
-import 'package:myapp/services/location_service.dart'; // Assuming this handles permissions
-import 'package:myapp/services/metro_data_service.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 
 // Assuming you have a Station class like this from your services
@@ -65,11 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       // Find the nearest station with the new coordinates
-      final Map<String, dynamic> result =
-          await _metroDataService.getNearestStation(
-        currentLocation.latitude ?? 0,
-        currentLocation.longitude ?? 0,
-      );
+      final Map<String, dynamic> result = await _metroDataService
+          .getNearestStation(
+            currentLocation.latitude ?? 0,
+            currentLocation.longitude ?? 0,
+          );
 
       // Update the state only if the widget is still in the tree
       if (mounted) {
@@ -118,15 +117,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     DropdownSearch<Station>(
-                      dropdownBuilder: (context, selectedItem) => Text(
-                        selectedItem != null ? selectedItem.name : 'Select',
-                      ),
+                      dropdownBuilder:
+                          (context, selectedItem) => Text(
+                            selectedItem != null ? selectedItem.name : 'Select',
+                          ),
                       itemAsString: (s) => s.name,
                       selectedItem: _selectedStartingStation,
                       items: (f, cs) => stations,
-                      compareFn: (s1, s2) =>
-                          s1.name.compareTo(s2.name) ==
-                          0, // Corrected items list
+                      compareFn:
+                          (s1, s2) =>
+                              s1.name.compareTo(s2.name) ==
+                              0, // Corrected items list
                       popupProps: PopupProps.menu(
                         showSearchBox: true, // Good for long lists
                         fit: FlexFit.loose,
@@ -137,14 +138,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(height: 20),
                     DropdownSearch<Station>(
-                      dropdownBuilder: (context, selectedItem) => Text(
-                        selectedItem != null ? selectedItem.name : 'Select',
-                      ),
+                      dropdownBuilder:
+                          (context, selectedItem) => Text(
+                            selectedItem != null ? selectedItem.name : 'Select',
+                          ),
                       items: (f, cs) => stations,
                       itemAsString: (s) => s.name,
-                      compareFn: (s1, s2) =>
-                          s1.name.compareTo(s2.name) ==
-                          0, // Corrected items list
+                      compareFn:
+                          (s1, s2) =>
+                              s1.name.compareTo(s2.name) ==
+                              0, // Corrected items list
                       popupProps: PopupProps.menu(
                         showSearchBox: true,
                         fit: FlexFit.loose,
@@ -155,23 +158,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(height: 30),
                     ElevatedButton(
-                      onPressed: (_selectedStartingStation != null &&
-                              _selectedEndingStation != null &&
-                              _selectedEndingStation !=
-                                  _selectedStartingStation)
-                          ? () {
-                              print(
-                                'Starting Station: $_selectedStartingStation',
-                              );
-                              print(
-                                'Ending Station: $_selectedEndingStation',
-                              );
+                      onPressed:
+                          (_selectedStartingStation != null &&
+                                  _selectedEndingStation != null &&
+                                  _selectedEndingStation !=
+                                      _selectedStartingStation)
+                              ? () {
+                                print(
+                                  'Starting Station: $_selectedStartingStation',
+                                );
+                                print(
+                                  'Ending Station: $_selectedEndingStation',
+                                );
 
-                              initBackgroundGeolocation(
+                                initBackgroundGeolocation(
                                   _selectedEndingStation!.latitude,
-                                  _selectedEndingStation!.longitude);
-                            }
-                          : null,
+                                  _selectedEndingStation!.longitude,
+                                );
+                              }
+                              : null,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20.0,

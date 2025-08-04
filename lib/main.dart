@@ -1,25 +1,32 @@
+import 'package:WhereIsMyMetro/background_handler.dart';
 import 'package:flutter/material.dart';
-import 'package:myapp/background_handler.dart';
 import '/screens/home_screen.dart';
-import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
-    as bg;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 Future<void> initializeNotifications() async {
-  const AndroidInitializationSettings initializationSettingsAndroid =
+   const AndroidInitializationSettings androidSettings =
       AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
+  final InitializationSettings initSettings = InitializationSettings(
+    android: androidSettings,
   );
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      if (response.actionId == 'STOP_ALARM') {
+        stopAlarm(); // Stop ringtone and cancel notification
+      }
+    },
+  );
 }
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeNotifications();
   runApp(const MyApp());
 }
 
