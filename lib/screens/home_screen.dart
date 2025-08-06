@@ -1,5 +1,6 @@
 import 'dart:async'; // Import for StreamSubscription
-import 'package:WhereIsMyMetro/background_handler.dart';
+import 'package:WhereIsMyMetro/services/background_handler.dart';
+import 'package:WhereIsMyMetro/screens/pathway_screen.dart';
 import 'package:WhereIsMyMetro/services/metro_data_service.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
@@ -90,172 +91,208 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  appBar: AppBar(
-    title: const Text('Delhi Metro Navigator'),
-    centerTitle: true,
-    elevation: 0,
-    backgroundColor: Colors.white,
-    foregroundColor: Colors.black,
-  ),
-  body: Padding(
-    padding: const EdgeInsets.all(20.0),
-    child: FutureBuilder<List<Station>>(
-      future: _stationsFuture,
-      builder: (
-        BuildContext context,
-        AsyncSnapshot<List<Station>> snapshot,
-      ) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error loading stations: ${snapshot.error}',
-              style: TextStyle(color: Colors.red),
-            ),
-          );
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(
-            child: Text('No station data available.'),
-          );
-        } else {
-          final List<Station> stations = snapshot.data!;
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const SizedBox(height: 30),
-                const Text(
-                  "From",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      appBar: AppBar(
+        title: const Text('Delhi Metro Navigator'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: FutureBuilder<List<Station>>(
+          future: _stationsFuture,
+          builder: (
+            BuildContext context,
+            AsyncSnapshot<List<Station>> snapshot,
+          ) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error loading stations: ${snapshot.error}',
+                  style: TextStyle(color: Colors.red),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: DropdownSearch<Station>(
-                    dropdownBuilder: (context, selectedItem) => Text(
-                      selectedItem != null ? selectedItem.name : 'Select',
-                      style: const TextStyle(fontSize: 15),
+              );
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text('No station data available.'));
+            } else {
+              final List<Station> stations = snapshot.data!;
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    const SizedBox(height: 30),
+                    const Text(
+                      "From",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
-                    itemAsString: (s) => s.name,
-                    selectedItem: _selectedStartingStation,
-                    items: (f, cs) => stations,
-                    compareFn: (s1, s2) => s1.name == s2.name,
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      fit: FlexFit.loose,
-                    ),
-                    onChanged: (value) {
-                      _selectedStartingStation = value;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "To",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: DropdownSearch<Station>(
-                    decoratorProps: const DropDownDecoratorProps(
-                      decoration: InputDecoration.collapsed(hintText: ''),
-                    ),
-                    dropdownBuilder: (context, selectedItem) => Text(
-                      selectedItem != null ? selectedItem.name : 'Select',
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                    items: (f, cs) => stations,
-                    itemAsString: (s) => s.name,
-                    compareFn: (s1, s2) => s1.name == s2.name,
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      fit: FlexFit.loose,
-                    ),
-                    onChanged: (value) {
-                      _selectedEndingStation = value;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (_selectedStartingStation != null &&
-                            _selectedEndingStation != null &&
-                            _selectedEndingStation != _selectedStartingStation)
-                        ? () async {
-                            print('Starting Station: $_selectedStartingStation');
-                            print('Ending Station: $_selectedEndingStation');
-
-                            await initBackgroundGeolocation(
-                              _selectedEndingStation!.latitude,
-                              _selectedEndingStation!.longitude,
-                            );
-
-                            final List<String> intermediateStations =
-                                await findIntermediateStations(
-                              _selectedStartingStation!.name,
-                              _selectedEndingStation!.name,
-                            );
-                            print(intermediateStations);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Alarm tracking started. You’ll be alerted within 1 km of ${_selectedEndingStation!.name}.',
-                                ),
-                                backgroundColor: Colors.green,
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: Colors.blueAccent,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                    child: const Text('Plan Journey'),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Center(
-                  child: _nearestStation != null
-                      ? Text(
-                          "📍 Nearest Station: ${_nearestStation!.name}",
-                          style: const TextStyle(fontSize: 16),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                    const SizedBox(height: 6),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: DropdownSearch<Station>(
+                        dropdownBuilder:
+                            (context, selectedItem) => Text(
+                              selectedItem != null
+                                  ? selectedItem.name
+                                  : 'Select',
+                              style: const TextStyle(fontSize: 15),
                             ),
-                            SizedBox(width: 8),
-                            Text("Finding nearest station..."),
-                          ],
+                        itemAsString: (s) => s.name,
+                        selectedItem: _selectedStartingStation,
+                        items: (f, cs) => stations,
+                        compareFn: (s1, s2) => s1.name == s2.name,
+                        popupProps: const PopupProps.menu(
+                          showSearchBox: true,
+                          fit: FlexFit.loose,
                         ),
+                        onChanged: (value) {
+                          _selectedStartingStation = value;
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "To",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: DropdownSearch<Station>(
+                        decoratorProps: const DropDownDecoratorProps(
+                          decoration: InputDecoration.collapsed(hintText: ''),
+                        ),
+                        dropdownBuilder:
+                            (context, selectedItem) => Text(
+                              selectedItem != null
+                                  ? selectedItem.name
+                                  : 'Select',
+                              style: const TextStyle(fontSize: 15),
+                            ),
+                        items: (f, cs) => stations,
+                        itemAsString: (s) => s.name,
+                        compareFn: (s1, s2) => s1.name == s2.name,
+                        popupProps: const PopupProps.menu(
+                          showSearchBox: true,
+                          fit: FlexFit.loose,
+                        ),
+                        onChanged: (value) {
+                          _selectedEndingStation = value;
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed:
+                            (_selectedStartingStation != null &&
+                                    _selectedEndingStation != null &&
+                                    _selectedEndingStation !=
+                                        _selectedStartingStation)
+                                ? () async {
+                                  print(
+                                    'Starting Station: $_selectedStartingStation',
+                                  );
+                                  print(
+                                    'Ending Station: $_selectedEndingStation',
+                                  );
+
+                                  await initBackgroundGeolocation(
+                                    _selectedEndingStation!.latitude,
+                                    _selectedEndingStation!.longitude,
+                                  );
+
+                                  // final List<String> intermediateStations =
+                                  //     await findIntermediateStations(
+                                  //   _selectedStartingStation!.name,
+                                  //   _selectedEndingStation!.name,
+                                  // );
+                                  // print(intermediateStations);
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => MetroRouteFinder(
+                                            startStation: _selectedStartingStation!
+                                                .name,
+                                            endStation:
+                                                _selectedEndingStation!.name,
+                                            stationNames:
+                                                stations
+                                                    .map((s) => s.name)
+                                                    .toList(),
+                                          ),
+                                    ),
+                                  );
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Alarm tracking started. You’ll be alerted within 1 km of ${_selectedEndingStation!.name}.',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                      duration: const Duration(seconds: 4),
+                                    ),
+                                  );
+                                }
+                                : null,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: Colors.blueAccent,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          textStyle: const TextStyle(fontSize: 16),
+                        ),
+                        child: const Text('Plan Journey'),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    Center(
+                      child:
+                          _nearestStation != null
+                              ? Text(
+                                "📍 Nearest Station: ${_nearestStation!.name}",
+                                style: const TextStyle(fontSize: 16),
+                              )
+                              : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  SizedBox(
+                                    width: 15,
+                                    height: 15,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text("Finding nearest station..."),
+                                ],
+                              ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        }
-      },
-    ),
-  ),
-);
+              );
+            }
+          },
+        ),
+      ),
+    );
   }
 }
